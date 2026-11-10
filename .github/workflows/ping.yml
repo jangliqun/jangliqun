@@ -1,0 +1,30 @@
+name: Supabase Keepalive
+
+on:
+  schedule:
+    - cron: "17 2 * * *"   # 每天 UTC 2:17 = 北京时间 10:17 运行
+  workflow_dispatch:        # 允许手动触发
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" \
+              -H "apikey: $SUPABASE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_KEY" \
+              "$SUPABASE_URL/rest/v1/students?select=phone&limit=1")
+            echo "第 $i 次请求：HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "保活成功"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "三次请求均失败，请检查 Secrets 配置"
+          exit 1
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
